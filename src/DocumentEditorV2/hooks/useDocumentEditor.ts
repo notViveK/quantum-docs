@@ -215,58 +215,91 @@ export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
         },
       );
 
-      // Process regular nodes (non-segmented)
+      // 🔧 CRITICAL FIX: Process HTML changes in multiple passes to handle DOM structure changes
+      console.log('🔄 DEBUG: Starting multi-pass processing for regular nodes...');
+      
+      // Separate HTML changes from text changes
+      const htmlChanges: typeof regularNodes = [];
+      const textChanges: typeof regularNodes = [];
+      
       regularNodes.forEach((nodeData) => {
-        // Check if this node has changes
         if (
           nodeData.newText !== nodeData.originalText ||
           nodeData.newHTML !== nodeData.originalHTML
         ) {
-          console.log('Processing regular node changes:', nodeData);
-
-          // Determine if we're dealing with HTML content or plain text
           const isHTMLChange =
             nodeData.newHTML !== nodeData.originalHTML &&
             (nodeData.newHTML.includes('<') ||
               nodeData.originalHTML.includes('<'));
-
+              
           if (isHTMLChange) {
-            console.log('Detected HTML formatting change');
-            // Handle HTML content changes (formatting applied/removed)
-            const success: boolean = findAndReplaceTextByPath(
-              doc.body,
-              nodeData.path,
-              nodeData.originalText,
-              nodeData.newHTML,
-              true, // This is HTML content
-            );
-
-            if (success) {
-              changesMade = true;
-              console.log('Successfully applied HTML formatting change');
-            } else {
-              console.log('Failed to apply HTML formatting change');
-            }
+            htmlChanges.push(nodeData);
           } else {
-            console.log('Detected plain text change');
-            // Handle plain text changes
-            const success: boolean = findAndReplaceTextByPath(
-              doc.body,
-              nodeData.path,
-              nodeData.originalText,
-              nodeData.newText,
-              false,
-            );
-
-            if (success) {
-              changesMade = true;
-              console.log('Successfully applied text change');
-            } else {
-              console.log('Failed to apply text change');
-            }
+            textChanges.push(nodeData);
           }
         }
       });
+      
+      console.log(`🔄 DEBUG: Found ${htmlChanges.length} HTML changes and ${textChanges.length} text changes`);
+      
+      // Process HTML changes one by one, recalculating DOM after each change
+      for (let i = 0; i < htmlChanges.length; i++) {
+        const nodeData = htmlChanges[i];
+        console.log(`🔄 DEBUG: Processing HTML change ${i + 1}/${htmlChanges.length}:`, nodeData);
+        
+        const success: boolean = findAndReplaceTextByPath(
+          doc.body,
+          nodeData.path,
+          nodeData.originalText,
+          nodeData.newHTML,
+          true, // This is HTML content
+        );
+
+        if (success) {
+          changesMade = true;
+          console.log(`✅ Successfully applied HTML formatting change ${i + 1}/${htmlChanges.length}`);
+          
+          // 🔧 CRITICAL: Recalculate DOM paths for remaining changes
+          if (i < htmlChanges.length - 1) {
+            console.log('🔄 DEBUG: Recalculating DOM paths for remaining HTML changes...');
+            
+            // Update paths for remaining HTML changes
+            for (let j = i + 1; j < htmlChanges.length; j++) {
+              const remainingChange = htmlChanges[j];
+              const updatedNode = textNodes.editableTextNodes.current.get(remainingChange.id);
+              if (updatedNode) {
+                htmlChanges[j] = { ...remainingChange, path: updatedNode.path };
+                console.log(`🔄 DEBUG: Updated path for HTML change ${j + 1}: ${updatedNode.path}`);
+              }
+            }
+            console.log('✅ DEBUG: DOM paths recalculated for remaining HTML changes');
+          }
+        } else {
+          console.log(`❌ Failed to apply HTML formatting change ${i + 1}/${htmlChanges.length}`);
+        }
+      }
+      
+      // Process text changes (these don't change DOM structure significantly)
+      textChanges.forEach((nodeData) => {
+        console.log('Processing text change:', nodeData);
+        
+        const success: boolean = findAndReplaceTextByPath(
+          doc.body,
+          nodeData.path,
+          nodeData.originalText,
+          nodeData.newText,
+          false,
+        );
+
+        if (success) {
+          changesMade = true;
+          console.log('Successfully applied text change');
+        } else {
+          console.log('Failed to apply text change');
+        }
+      });
+      
+      console.log('✅ DEBUG: Multi-pass processing completed');
 
       if (changesMade) {
         const updatedHtml: string = doc.documentElement.outerHTML;
