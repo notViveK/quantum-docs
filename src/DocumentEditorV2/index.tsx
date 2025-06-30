@@ -30,7 +30,7 @@ const DocumentEditorV2: React.FC = () => {
 
   return (
     <div className="document-editor-container">
-      <h1 className="document-editor-title">Document Template Editor V2</h1>
+      <h1 className="document-editor-title">Document Template Editor</h1>
 
       <div className="document-editor-main">
         {/* Left Pane: HTML Template Input */}
