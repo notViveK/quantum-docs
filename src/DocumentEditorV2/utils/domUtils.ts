@@ -56,16 +56,38 @@ export const findAndReplaceTextByPath = (
   const textNode = targetNode as Text;
 
   // Verify the content matches what we expect
+  console.log('🔍 DEBUG: Text content comparison:', {
+    path,
+    expectedText: originalText,
+    expectedTrimmed: originalText.trim(),
+    foundText: textNode.nodeValue,
+    foundTrimmed: textNode.nodeValue?.trim(),
+    exactMatch: textNode.nodeValue === originalText,
+    trimmedMatch: textNode.nodeValue?.trim() === originalText.trim(),
+  });
+
   if (
     !textNode.nodeValue ||
     textNode.nodeValue.trim() !== originalText.trim()
   ) {
     console.error(
-      'Text content mismatch. Expected:',
-      originalText,
+      '❌ DEBUG: Text content mismatch. Expected:',
+      JSON.stringify(originalText),
       'Found:',
-      textNode.nodeValue,
+      JSON.stringify(textNode.nodeValue),
     );
+    console.error('❌ DEBUG: Character-by-character comparison:');
+    console.error('Expected chars:', [...originalText.trim()]);
+    console.error('Found chars:', [...(textNode.nodeValue?.trim() || '')]);
+    
+    // 🔧 FALLBACK: Try content-based search as alternative to path-based targeting
+    console.log('🔄 DEBUG: Attempting content-based fallback search...');
+    const fallbackResult = findAndReplaceByContent(startNode, originalText, newContent, isHTML);
+    if (fallbackResult) {
+      console.log('✅ DEBUG: Content-based fallback succeeded!');
+      return true;
+    }
+    console.log('❌ DEBUG: Content-based fallback also failed');
     return false;
   }
 
@@ -219,5 +241,94 @@ export const findAndReplaceText = (
       }
     }
   }
+  return false;
+};
+
+/**
+ * Content-based fallback function for when path-based targeting fails
+ * Searches through all text nodes to find exact content match
+ */
+const findAndReplaceByContent = (
+  startNode: Node,
+  originalText: string,
+  newContent: string,
+  isHTML: boolean = false,
+): boolean => {
+  console.log('🔍 DEBUG: Starting content-based search for:', JSON.stringify(originalText.trim()));
+  
+  // Walk through all text nodes in the document
+  const walker = document.createTreeWalker(
+    startNode,
+    NodeFilter.SHOW_TEXT,
+    null,
+  );
+
+  let currentNode: Node | null;
+  while ((currentNode = walker.nextNode())) {
+    const textNode = currentNode as Text;
+    
+    if (textNode.nodeValue && textNode.nodeValue.trim() === originalText.trim()) {
+      console.log('✅ DEBUG: Found matching text node via content search!');
+      console.log('🔍 DEBUG: Match details:', {
+        foundText: JSON.stringify(textNode.nodeValue),
+        expectedText: JSON.stringify(originalText),
+        parentElement: textNode.parentElement?.tagName,
+      });
+      
+      // Apply the same replacement logic as path-based approach
+      try {
+        if (isHTML) {
+          if (newContent.includes('<') && newContent.includes('>')) {
+            // Handle HTML content replacement (adding formatting)
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = newContent;
+
+            // Replace text node with HTML content
+            const fragment = document.createDocumentFragment();
+            while (tempDiv.firstChild) {
+              fragment.appendChild(tempDiv.firstChild);
+            }
+            textNode.parentNode!.replaceChild(fragment, textNode);
+          } else {
+            // Handle removing HTML formatting (HTML to plain text)
+            const parentElement = textNode.parentNode as Element;
+            if (
+              parentElement &&
+              parentElement.nodeType === Node.ELEMENT_NODE &&
+              (parentElement.tagName === 'STRONG' ||
+                parentElement.tagName === 'EM' ||
+                parentElement.tagName === 'U' ||
+                parentElement.tagName === 'B' ||
+                parentElement.tagName === 'I')
+            ) {
+              // Replace the formatting element with just the text content
+              const textNodeNew = document.createTextNode(newContent);
+              parentElement.parentNode!.replaceChild(textNodeNew, parentElement);
+            } else {
+              // Simple text replacement
+              textNode.nodeValue = newContent;
+            }
+          }
+        } else {
+          // Simple text replacement
+          textNode.nodeValue = newContent;
+        }
+
+        console.log(
+          '✅ Successfully replaced text via content-based search:',
+          'from:',
+          originalText,
+          'to:',
+          newContent,
+        );
+        return true;
+      } catch (error) {
+        console.error('❌ Error during content-based replacement:', error);
+        return false;
+      }
+    }
+  }
+  
+  console.log('❌ DEBUG: No matching text node found via content search');
   return false;
 };
