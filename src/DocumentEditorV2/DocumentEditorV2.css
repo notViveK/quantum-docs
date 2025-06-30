@@ -1,0 +1,521 @@
+/* DocumentEditor V2 Styles */
+.document-editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f8f9fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+.document-editor-title {
+  text-align: center;
+  color: #343a40;
+  margin: 20px 0;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.document-editor-main {
+  display: flex;
+  flex: 1;
+  gap: 20px;
+  padding: 0 20px 20px;
+  min-height: 0;
+}
+
+.document-editor-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.document-editor-pane-title {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin: 0;
+  padding: 15px 20px;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.document-editor-textarea {
+  flex: 1;
+  border: none;
+  padding: 20px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  background-color: #f8f9fa;
+}
+
+.document-editor-textarea:focus {
+  background-color: #fff;
+}
+
+.document-editor-message {
+  padding: 10px 20px;
+  margin: 0;
+  font-size: 14px;
+  border-top: 1px solid #e9ecef;
+}
+
+.document-editor-message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.document-editor-message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid #dc3545;
+}
+
+.document-editor-button {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  margin: 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.document-editor-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.document-editor-button:active {
+  transform: translateY(0);
+}
+
+.document-editor-formatting-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  align-items: center;
+}
+
+.document-editor-format-button {
+  background: #fff;
+  border: 1px solid #ced4da;
+  color: #495057;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.document-editor-format-button:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.document-editor-format-button:active {
+  background-color: #dee2e6;
+  transform: translateY(1px);
+}
+
+.document-editor-format-button.active {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.document-editor-preview-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.document-editor-iframe {
+  flex: 1;
+  border: none;
+  background: white;
+  min-height: 400px;
+}
+
+.document-editor-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  font-style: italic;
+  padding: 40px;
+  text-align: center;
+  background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%),
+    linear-gradient(-45deg, #f8f9fa 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f8f9fa 75%),
+    linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .document-editor-main {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .document-editor-pane {
+    min-height: 300px;
+  }
+
+  .document-editor-title {
+    font-size: 1.5rem;
+    margin: 10px 0;
+  }
+}
+
+/* Version Control Styles */
+.document-editor-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px;
+}
+
+.document-editor-version-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+}
+
+.document-editor-version-button {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  margin: 0;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.document-editor-version-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+.document-editor-version-button:disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.document-editor-version-info {
+  font-size: 13px;
+  color: #6c757d;
+  font-weight: 500;
+  padding: 4px 8px;
+  background-color: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  min-width: 120px;
+  text-align: center;
+}
+
+.document-editor-save-button {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  margin: 0;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.document-editor-save-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.document-editor-save-button:active {
+  transform: translateY(0);
+}
+
+/* Timeline UI Styles */
+.document-editor-timeline {
+  margin: 16px 0;
+  padding: 20px;
+  background-color: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.document-editor-timeline-title {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #343a40;
+  text-align: center;
+}
+
+.document-editor-timeline-container {
+  position: relative;
+  height: 80px;
+  margin: 20px 0;
+}
+
+.document-editor-timeline-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #28a745 0%, #6c757d 50%, #dee2e6 100%);
+  transform: translateY(-50%);
+  border-radius: 1px;
+}
+
+.document-editor-timeline-point {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.document-editor-timeline-point:hover {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.document-editor-timeline-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.document-editor-timeline-point.past .document-editor-timeline-dot {
+  background-color: #28a745;
+}
+
+.document-editor-timeline-point.current .document-editor-timeline-dot {
+  background-color: #007bff;
+  width: 20px;
+  height: 20px;
+  box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.2);
+}
+
+.document-editor-timeline-point.future .document-editor-timeline-dot {
+  background-color: #dee2e6;
+}
+
+.document-editor-timeline-label {
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.document-editor-timeline-version {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 2px;
+}
+
+.document-editor-timeline-time {
+  color: #6c757d;
+  font-size: 10px;
+}
+
+.document-editor-timeline-point.current .document-editor-timeline-version {
+  color: #007bff;
+  font-weight: 700;
+}
+
+.document-editor-timeline-tooltip {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #343a40;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  /* Smart positioning to prevent viewport cutoff */
+  min-width: max-content;
+}
+
+/* Default tooltip arrow (centered) */
+.document-editor-timeline-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #343a40;
+}
+
+/* Left-aligned tooltip for rightmost timeline point only */
+.document-editor-timeline-point:last-child .document-editor-timeline-tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/* Left-aligned tooltip arrow for rightmost timeline point only */
+.document-editor-timeline-point:last-child
+  .document-editor-timeline-tooltip::after {
+  left: auto;
+  right: 20px;
+  transform: none;
+}
+
+/* Right-aligned tooltip for leftmost timeline points */
+.document-editor-timeline-point:first-child .document-editor-timeline-tooltip,
+.document-editor-timeline-point:nth-child(2) .document-editor-timeline-tooltip {
+  left: 0;
+  right: auto;
+  transform: none;
+}
+
+/* Right-aligned tooltip arrow */
+.document-editor-timeline-point:first-child
+  .document-editor-timeline-tooltip::after,
+.document-editor-timeline-point:nth-child(2)
+  .document-editor-timeline-tooltip::after {
+  left: 20px;
+  right: auto;
+  transform: none;
+}
+
+.document-editor-timeline-point:hover .document-editor-timeline-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+.document-editor-timeline-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.document-editor-timeline-tooltip-time {
+  font-size: 11px;
+  color: #adb5bd;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .document-editor-main {
+    flex-direction: column;
+  }
+
+  .document-editor-pane {
+    min-height: 300px;
+  }
+
+  .document-editor-formatting-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+
+  .document-editor-format-button {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .document-editor-version-controls {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .document-editor-version-button {
+    min-width: 70px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .document-editor-version-info {
+    font-size: 12px;
+    min-width: 100px;
+  }
+
+  /* Timeline responsive design */
+  .document-editor-timeline {
+    padding: 12px;
+  }
+
+  .document-editor-timeline-title {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+
+  .document-editor-timeline-container {
+    height: 100px;
+    margin: 16px 0;
+  }
+
+  .document-editor-timeline-label {
+    font-size: 10px;
+  }
+
+  .document-editor-timeline-version {
+    font-size: 10px;
+  }
+
+  .document-editor-timeline-time {
+    font-size: 8px;
+  }
+
+  .document-editor-timeline-tooltip {
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+
+  .document-editor-timeline-tooltip-time {
+    font-size: 9px;
+  }
+}
