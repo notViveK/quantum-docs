@@ -39,7 +39,7 @@ export const BoldFormatter: FormatterModule = {
    * Apply bold formatting to the selected range
    * This function will be serialized and executed directly in iframe
    */
-  apply: (range: Range, parentElement: Element): void => {
+  apply: (range: Range): void => {
     console.log('DEBUG: Applying bold formatting');
 
     // Create strong element
@@ -84,7 +84,7 @@ export const BoldFormatter: FormatterModule = {
    * Remove bold formatting from the selected range
    * This function will be serialized and executed directly in iframe
    */
-  remove: (range: Range, parentElement: Element): void => {
+  remove: (range: Range): void => {
     console.log('DEBUG: Removing bold formatting');
 
     // Find the containing STRONG or B element

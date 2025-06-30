@@ -1,6 +1,6 @@
 // Text node management hook for DocumentEditor V2
 import { useRef, useCallback } from 'react';
-import type { EditableTextNode, TextSegment } from '../types';
+import type { EditableTextNode } from '../types';
 import {
   parseTextWithFreemarker,
   createFreemarkerSpan,

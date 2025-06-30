@@ -102,7 +102,6 @@ const DocumentEditorV2: React.FC = () => {
                   {versions.map((version, index) => {
                     const isCurrent = index === versionInfo.current - 1;
                     const isPast = index < versionInfo.current - 1;
-                    const isFuture = index > versionInfo.current - 1;
 
                     // Determine timeline point class
                     let timelineClass = 'future';

@@ -21,8 +21,8 @@ export interface TextSegment {
 export interface FormatterModule {
   name: string;
   detect: (node: Node) => boolean;
-  apply: (range: Range, parentElement: Element) => void;
-  remove: (range: Range, parentElement: Element) => void;
+  apply: (range: Range) => void;
+  remove: (range: Range) => void;
   toolbarButton: {
     label: string;
     title: string;
