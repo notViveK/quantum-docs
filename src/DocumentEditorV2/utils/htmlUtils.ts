@@ -69,7 +69,8 @@ export const createFreemarkerSpan = (
   variableSpan.style.padding = '1px 3px';
   variableSpan.style.fontFamily = 'monospace';
   variableSpan.style.fontSize = '0.9em';
-  variableSpan.textContent = content;
+  // 🔧 FIX: Use innerHTML to preserve FreeMarker syntax without HTML entity encoding
+  variableSpan.innerHTML = content;
   return variableSpan;
 };
 

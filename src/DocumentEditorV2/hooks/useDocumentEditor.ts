@@ -302,11 +302,16 @@ export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
       console.log('✅ DEBUG: Multi-pass processing completed');
 
       if (changesMade) {
-        const updatedHtml: string = doc.documentElement.outerHTML;
+        let updatedHtml: string = doc.documentElement.outerHTML;
+        
+        // 🔧 FIX: Post-process HTML to decode FreeMarker syntax that gets HTML-encoded during DOM serialization
+        updatedHtml = updatedHtml.replace(/&lt;#([^&]+)&gt;/g, '<#$1>');
+        updatedHtml = updatedHtml.replace(/&lt;\/#([^&]+)&gt;/g, '</#$1>');
+        console.log('🔧 DEBUG: Post-processed save reconstruction HTML to preserve FreeMarker syntax');
 
         // Save the NEW version with updated HTML
         versionControl.saveVersion(
-          updatedHtml, // ✅ Save the NEW state, not the old one
+          updatedHtml, // ✅ Save the NEW state with decoded FreeMarker syntax
           editedHtml,
           textNodes.editableTextNodes.current,
           'Document changes saved',
