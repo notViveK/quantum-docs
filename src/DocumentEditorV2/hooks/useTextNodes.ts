@@ -138,14 +138,17 @@ export const useTextNodes = () => {
 
     traverseAndWrap(doc.body);
     
-    // 🔧 FIX: Post-process HTML to decode FreeMarker syntax that gets HTML-encoded during DOM serialization
+    // 🔧 FIX: Post-process HTML to decode FreeMarker syntax that gets corrupted during DOM serialization
     let finalHtml = doc.documentElement.outerHTML;
     
-    // Decode HTML entities in FreeMarker directives
+    // Fix HTML entity encoding
     finalHtml = finalHtml.replace(/&lt;#([^&]+)&gt;/g, '<#$1>');
     finalHtml = finalHtml.replace(/&lt;\/#([^&]+)&gt;/g, '</#$1>');
     
-    console.log('🔧 DEBUG: Post-processed HTML to preserve FreeMarker syntax');
+    // 🔧 FIX: Fix HTML comment corruption of FreeMarker closing tags
+    finalHtml = finalHtml.replace(/<!--#([^-]+)-->/g, '</#$1>');
+    
+    console.log('🔧 DEBUG: Post-processed HTML to preserve FreeMarker syntax and fix closing tag corruption');
     return finalHtml;
   }, []);
 

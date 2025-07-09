@@ -304,10 +304,15 @@ export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
       if (changesMade) {
         let updatedHtml: string = doc.documentElement.outerHTML;
         
-        // 🔧 FIX: Post-process HTML to decode FreeMarker syntax that gets HTML-encoded during DOM serialization
+        // 🔧 FIX: Post-process HTML to decode FreeMarker syntax that gets corrupted during DOM serialization
+        // Fix HTML entity encoding
         updatedHtml = updatedHtml.replace(/&lt;#([^&]+)&gt;/g, '<#$1>');
         updatedHtml = updatedHtml.replace(/&lt;\/#([^&]+)&gt;/g, '</#$1>');
-        console.log('🔧 DEBUG: Post-processed save reconstruction HTML to preserve FreeMarker syntax');
+        
+        // 🔧 FIX: Fix HTML comment corruption of FreeMarker closing tags
+        updatedHtml = updatedHtml.replace(/<!--#([^-]+)-->/g, '</#$1>');
+        
+        console.log('🔧 DEBUG: Post-processed save reconstruction HTML to preserve FreeMarker syntax and fix closing tag corruption');
 
         // Save the NEW version with updated HTML
         versionControl.saveVersion(
