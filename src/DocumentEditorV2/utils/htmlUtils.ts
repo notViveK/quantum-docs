@@ -91,3 +91,110 @@ export const createEditableSpan = (
   span.textContent = content;
   return span;
 };
+
+// Storage for extracted FreeMarker tags (individual tags, not complete blocks)
+const freemarkerTagStorage = new Map<string, string>();
+let tagCounter = 0;
+
+/**
+ * Extract individual FreeMarker tags that can cause DOM displacement
+ * This handles overlapping, incomplete, and complex FreeMarker structures
+ */
+export const extractFreemarkerTags = (html: string): string => {
+  // Clear previous storage
+  freemarkerTagStorage.clear();
+  tagCounter = 0;
+
+  // Regex to match individual FreeMarker tags (not complete blocks)
+  const freemarkerTagRegex = /<#(?:if\s[^>]*|else|elseif\s[^>]*|\/#?\w+(?:\s[^>]*)?|\w+(?:\s[^>]*)?)>/gi;
+  
+  let processedHtml = html;
+  const matches = [];
+  let match;
+  
+  // Collect all FreeMarker tags first
+  while ((match = freemarkerTagRegex.exec(html)) !== null) {
+    matches.push({
+      tag: match[0],
+      index: match.index,
+      length: match[0].length
+    });
+  }
+  
+  // Process matches in reverse order to maintain correct indices
+  matches.reverse().forEach(matchInfo => {
+    const tagId = `FREEMARKER_TAG_${tagCounter++}`;
+    
+    // Store the original tag
+    freemarkerTagStorage.set(tagId, matchInfo.tag);
+    
+    // Create a placeholder comment that won't interfere with DOM parsing
+    const placeholder = `<!-- ${tagId} -->`;
+    
+    // Replace the tag with placeholder
+    processedHtml = processedHtml.substring(0, matchInfo.index) + 
+                   placeholder + 
+                   processedHtml.substring(matchInfo.index + matchInfo.length);
+    
+    console.log(`Extracted FreeMarker tag:`, {
+      tagId,
+      originalTag: matchInfo.tag,
+      placeholder,
+      position: matchInfo.index
+    });
+  });
+  
+  // Reset regex lastIndex for next use
+  freemarkerTagRegex.lastIndex = 0;
+  
+  return processedHtml;
+};
+
+/**
+ * Restore FreeMarker tags from placeholders
+ * Replaces placeholders back with original FreeMarker tags
+ */
+export const restoreFreemarkerTags = (html: string): string => {
+  let restoredHtml = html;
+  
+  // Restore all stored tags
+  for (const [tagId, originalTag] of freemarkerTagStorage.entries()) {
+    const placeholder = `<!-- ${tagId} -->`;
+    
+    if (restoredHtml.includes(placeholder)) {
+      restoredHtml = restoredHtml.replace(placeholder, originalTag);
+      console.log(`Restored FreeMarker tag:`, {
+        tagId,
+        placeholder,
+        restoredTag: originalTag
+      });
+    }
+  }
+  
+  return restoredHtml;
+};
+
+/**
+ * Get information about extracted FreeMarker tags (for debugging)
+ */
+export const getExtractedTagsInfo = (): Array<{tagId: string, content: string}> => {
+  return Array.from(freemarkerTagStorage.entries()).map(([tagId, content]) => ({
+    tagId,
+    content
+  }));
+};
+
+/**
+ * Check if HTML contains FreeMarker tags that could cause displacement
+ */
+export const hasProblematicFreemarkerTags = (html: string): boolean => {
+  // Check for any FreeMarker conditional tags
+  const freemarkerTagRegex = /<#(?:if\s[^>]*|else|elseif\s[^>]*|\/#?\w+(?:\s[^>]*)?|\w+(?:\s[^>]*)?)>/gi;
+  return freemarkerTagRegex.test(html);
+};
+
+// Legacy functions for backward compatibility
+export const extractFreemarkerConditionalBlocks = extractFreemarkerTags;
+export const restoreFreemarkerConditionalBlocks = restoreFreemarkerTags;
+export const getExtractedBlocksInfo = getExtractedTagsInfo;
+export const hasSpanningFreemarkerConditionals = hasProblematicFreemarkerTags;

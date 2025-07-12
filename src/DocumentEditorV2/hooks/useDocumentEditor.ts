@@ -9,6 +9,11 @@ import { useTextNodes } from './useTextNodes';
 import { useFormatting } from './useFormatting';
 import { useVersionControl } from './useVersionControl';
 import { findAndReplaceTextByPath, findNodeByPath } from '../utils/domUtils';
+import {
+  extractFreemarkerTags,
+  restoreFreemarkerTags,
+  hasProblematicFreemarkerTags,
+} from '../utils/htmlUtils';
 
 export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
   // State management
@@ -71,9 +76,19 @@ export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
     }
 
     try {
-      // Parse the original HTML template
+      // 🔧 FIX: Apply same FreeMarker tag extraction to htmlTemplate to match DOM structure
+      // This ensures the DOM structure matches what was used when creating text node paths
+      let processedTemplate = htmlTemplate;
+      const hasProblematicTags = hasProblematicFreemarkerTags(htmlTemplate);
+      
+      if (hasProblematicTags) {
+        processedTemplate = extractFreemarkerTags(htmlTemplate);
+        console.log('🔧 DEBUG: Applied FreeMarker tag extraction to htmlTemplate for text change processing');
+      }
+      
+      // Parse the processed HTML template (with FreeMarker tags extracted)
       const parser: DOMParser = new DOMParser();
-      const doc: Document = parser.parseFromString(htmlTemplate, 'text/html');
+      const doc: Document = parser.parseFromString(processedTemplate, 'text/html');
 
       let changesMade = false;
 
@@ -303,6 +318,12 @@ export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
 
       if (changesMade) {
         let updatedHtml: string = doc.documentElement.outerHTML;
+        
+        // 🔧 FIX: Restore FreeMarker tags if they were extracted
+        if (hasProblematicTags) {
+          updatedHtml = restoreFreemarkerTags(updatedHtml);
+          console.log('🔧 DEBUG: Restored FreeMarker tags after text change processing');
+        }
         
         // 🔧 FIX: Post-process HTML to decode FreeMarker syntax that gets corrupted during DOM serialization
         // Fix HTML entity encoding
