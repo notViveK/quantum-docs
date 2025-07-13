@@ -5,6 +5,9 @@ import {
   parseTextWithFreemarker,
   createFreemarkerSpan,
   createEditableSpan,
+  extractFreemarkerTags,
+  restoreFreemarkerTags,
+  hasProblematicFreemarkerTags,
 } from '../utils/htmlUtils';
 
 export const useTextNodes = () => {
@@ -17,8 +20,21 @@ export const useTextNodes = () => {
    * Function to prepare HTML with editable spans
    */
   const prepareEditableHtml = useCallback((htmlString: string): string => {
+    console.log('🔧 DEBUG: Starting HTML preparation with FreeMarker tag extraction');
+    
+    // Step 1: Check if HTML contains problematic FreeMarker tags
+    const hasProblematicTags = hasProblematicFreemarkerTags(htmlString);
+    console.log('🔧 DEBUG: Has problematic FreeMarker tags:', hasProblematicTags);
+    
+    // Step 2: Extract individual FreeMarker tags before DOM parsing
+    let processedHtml = htmlString;
+    if (hasProblematicTags) {
+      processedHtml = extractFreemarkerTags(htmlString);
+      console.log('🔧 DEBUG: HTML after FreeMarker tag extraction:', processedHtml);
+    }
+    
     const parser: DOMParser = new DOMParser();
-    const doc: Document = parser.parseFromString(htmlString, 'text/html');
+    const doc: Document = parser.parseFromString(processedHtml, 'text/html');
     let editableIdCounter = 0;
     editableTextNodes.current.clear(); // Clear previous editable nodes
 
@@ -148,7 +164,13 @@ export const useTextNodes = () => {
     // 🔧 FIX: Fix HTML comment corruption of FreeMarker closing tags
     finalHtml = finalHtml.replace(/<!--#([^-]+)-->/g, '</#$1>');
     
-    console.log('🔧 DEBUG: Post-processed HTML to preserve FreeMarker syntax and fix closing tag corruption');
+    // Step 3: Restore FreeMarker tags after DOM processing
+    if (hasProblematicTags) {
+      finalHtml = restoreFreemarkerTags(finalHtml);
+      console.log('🔧 DEBUG: HTML after FreeMarker tag restoration:', finalHtml);
+    }
+    
+    console.log('🔧 DEBUG: Final processed HTML with FreeMarker tags preserved');
     return finalHtml;
   }, []);
 
