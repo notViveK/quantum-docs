@@ -339,6 +339,68 @@ export const hasProblematicFreemarkerTags = (html: string): boolean => {
   return freemarkerTagRegex.test(html);
 };
 
+/**
+ * Enhanced FreeMarker extraction with AST-based library support
+ * Automatically chooses between regex-based and AST-based approaches
+ */
+export const extractFreemarkerTagsEnhanced = async (html: string): Promise<string> => {
+  try {
+    // Try AST-based approach first for better accuracy
+    const { extractFreemarkerTagsWithLibrary } = await import('./freemarkerLibraryUtils');
+    const result = await extractFreemarkerTagsWithLibrary(html);
+    console.log('✅ Using AST-based FreeMarker processing');
+    return result;
+  } catch (error) {
+    console.warn('AST-based processing failed, falling back to regex approach:', error instanceof Error ? error.message : String(error));
+    // Fall back to proven regex-based approach
+    return extractFreemarkerTags(html);
+  }
+};
+
+/**
+ * Analyze FreeMarker conditionals with enhanced AST support
+ */
+export const analyzeFreemarkerConditionals = async (html: string) => {
+  try {
+    const { analyzeConditionalBlocksWithLibrary } = await import('./freemarkerLibraryUtils');
+    const astAnalysis = await analyzeConditionalBlocksWithLibrary(html);
+    
+    if (astAnalysis) {
+      console.log('✅ Using AST-based conditional analysis');
+      return {
+        approach: 'ast' as const,
+        blocks: astAnalysis,
+        hasProblematicBlocks: astAnalysis.some(block => block.hasOrphanedElements)
+      };
+    }
+  } catch (error) {
+    console.warn('AST-based analysis failed:', error instanceof Error ? error.message : String(error));
+  }
+  
+  // Fall back to regex-based analysis
+  const orphanedConditionals = detectOrphanedTableElementConditionals(html);
+  return {
+    approach: 'regex' as const,
+    blocks: orphanedConditionals,
+    hasProblematicBlocks: orphanedConditionals.length > 0
+  };
+};
+
+/**
+ * Parse text with FreeMarker using enhanced AST support
+ */
+export const parseTextWithFreemarkerEnhanced = async (text: string) => {
+  try {
+    const { parseTextWithFreemarkerLibrary } = await import('./freemarkerLibraryUtils');
+    const result = await parseTextWithFreemarkerLibrary(text);
+    console.log('✅ Using AST-based text parsing');
+    return result;
+  } catch (error) {
+    console.warn('AST-based text parsing failed, falling back to regex:', error instanceof Error ? error.message : String(error));
+    return parseTextWithFreemarker(text);
+  }
+};
+
 // Legacy functions for backward compatibility
 export const extractFreemarkerConditionalBlocks = extractFreemarkerTags;
 export const restoreFreemarkerConditionalBlocks = restoreFreemarkerTags;
