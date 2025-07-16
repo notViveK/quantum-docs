@@ -11,8 +11,10 @@ import { useVersionControl } from './useVersionControl';
 import { findAndReplaceTextByPath, findNodeByPath } from '../utils/domUtils';
 import {
   extractFreemarkerTags,
+  extractFreemarkerTagsEnhanced,
   restoreFreemarkerTags,
   hasProblematicFreemarkerTags,
+  analyzeFreemarkerConditionals,
 } from '../utils/htmlUtils';
 
 export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
@@ -61,29 +63,53 @@ export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
 
   // Effect to update the editedHtml when htmlTemplate changes
   useEffect(() => {
-    if (htmlTemplate) {
-      setEditedHtml(textNodes.prepareEditableHtml(htmlTemplate));
-    } else {
-      setEditedHtml('');
-    }
+    const updateEditedHtml = async () => {
+      if (htmlTemplate) {
+        try {
+          const result = await textNodes.prepareEditableHtml(htmlTemplate);
+          setEditedHtml(result);
+        } catch (error) {
+          console.error('Error preparing editable HTML:', error);
+          setMessage('Error processing HTML template with enhanced FreeMarker support.');
+        }
+      } else {
+        setEditedHtml('');
+      }
+    };
+    
+    updateEditedHtml();
   }, [htmlTemplate, textNodes]);
 
   // Function to reconstruct the original HTML template with changes
-  const reconstructHtmlWithChanges = useCallback((): void => {
+  // Enhanced with AST-based FreeMarker processing
+  const reconstructHtmlWithChanges = useCallback(async (): Promise<void> => {
     if (!htmlTemplate) {
       setMessage('No HTML template to update.');
       return;
     }
 
     try {
-      // 🔧 FIX: Apply same FreeMarker tag extraction to htmlTemplate to match DOM structure
+      // 🔧 ENHANCED: Apply AST-based FreeMarker tag extraction to match DOM structure
       // This ensures the DOM structure matches what was used when creating text node paths
       let processedTemplate = htmlTemplate;
-      const hasProblematicTags = hasProblematicFreemarkerTags(htmlTemplate);
       
-      if (hasProblematicTags) {
-        processedTemplate = extractFreemarkerTags(htmlTemplate);
-        console.log('🔧 DEBUG: Applied FreeMarker tag extraction to htmlTemplate for text change processing');
+      try {
+        const analysis = await analyzeFreemarkerConditionals(htmlTemplate);
+        console.log('🔧 DEBUG: FreeMarker analysis for reconstruction:', {
+          approach: analysis.approach,
+          hasProblematic: analysis.hasProblematicBlocks
+        });
+        
+        if (analysis.hasProblematicBlocks || hasProblematicFreemarkerTags(htmlTemplate)) {
+          processedTemplate = await extractFreemarkerTagsEnhanced(htmlTemplate);
+          console.log('🔧 DEBUG: Applied enhanced FreeMarker tag extraction for text change processing');
+        }
+      } catch (error) {
+        console.warn('🔧 DEBUG: Enhanced processing failed, using fallback:', error);
+        if (hasProblematicFreemarkerTags(htmlTemplate)) {
+          processedTemplate = extractFreemarkerTags(htmlTemplate);
+          console.log('🔧 DEBUG: Applied fallback FreeMarker tag extraction');
+        }
       }
       
       // Parse the processed HTML template (with FreeMarker tags extracted)
@@ -320,7 +346,7 @@ export const useDocumentEditor = (formatters: FormatterModule[] = []) => {
         let updatedHtml: string = doc.documentElement.outerHTML;
         
         // 🔧 FIX: Restore FreeMarker tags if they were extracted
-        if (hasProblematicTags) {
+        if (hasProblematicFreemarkerTags(htmlTemplate)) {
           updatedHtml = restoreFreemarkerTags(updatedHtml);
           console.log('🔧 DEBUG: Restored FreeMarker tags after text change processing');
         }

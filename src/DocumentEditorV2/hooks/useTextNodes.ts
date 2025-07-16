@@ -3,11 +3,14 @@ import { useRef, useCallback } from 'react';
 import type { EditableTextNode } from '../types';
 import {
   parseTextWithFreemarker,
+  parseTextWithFreemarkerEnhanced,
   createFreemarkerSpan,
   createEditableSpan,
   extractFreemarkerTags,
+  extractFreemarkerTagsEnhanced,
   restoreFreemarkerTags,
   hasProblematicFreemarkerTags,
+  analyzeFreemarkerConditionals,
 } from '../utils/htmlUtils';
 
 export const useTextNodes = () => {
@@ -18,19 +21,29 @@ export const useTextNodes = () => {
 
   /**
    * Function to prepare HTML with editable spans
+   * Enhanced with AST-based FreeMarker processing
    */
-  const prepareEditableHtml = useCallback((htmlString: string): string => {
-    console.log('🔧 DEBUG: Starting HTML preparation with FreeMarker tag extraction');
+  const prepareEditableHtml = useCallback(async (htmlString: string): Promise<string> => {
+    console.log('🔧 DEBUG: Starting HTML preparation with enhanced AST-based FreeMarker processing');
     
-    // Step 1: Check if HTML contains problematic FreeMarker tags
-    const hasProblematicTags = hasProblematicFreemarkerTags(htmlString);
-    console.log('🔧 DEBUG: Has problematic FreeMarker tags:', hasProblematicTags);
+    // Step 1: Analyze FreeMarker conditionals with AST-based approach
+    const analysis = await analyzeFreemarkerConditionals(htmlString);
+    console.log('🔧 DEBUG: FreeMarker analysis:', {
+      approach: analysis.approach,
+      blocksFound: analysis.blocks.length,
+      hasProblematic: analysis.hasProblematicBlocks
+    });
     
-    // Step 2: Extract individual FreeMarker tags before DOM parsing
+    // Step 2: Extract FreeMarker tags using enhanced AST-based approach
     let processedHtml = htmlString;
-    if (hasProblematicTags) {
-      processedHtml = extractFreemarkerTags(htmlString);
-      console.log('🔧 DEBUG: HTML after FreeMarker tag extraction:', processedHtml);
+    if (analysis.hasProblematicBlocks || hasProblematicFreemarkerTags(htmlString)) {
+      try {
+        processedHtml = await extractFreemarkerTagsEnhanced(htmlString);
+        console.log('🔧 DEBUG: HTML after enhanced FreeMarker tag extraction');
+      } catch (error) {
+        console.warn('🔧 DEBUG: Enhanced extraction failed, using fallback:', error);
+        processedHtml = extractFreemarkerTags(htmlString);
+      }
     }
     
     const parser: DOMParser = new DOMParser();
@@ -39,7 +52,7 @@ export const useTextNodes = () => {
     editableTextNodes.current.clear(); // Clear previous editable nodes
 
     // Function to traverse the DOM and wrap static text
-    const traverseAndWrap = (node: Node, path: number[] = []): void => {
+    const traverseAndWrap = async (node: Node, path: number[] = []): Promise<void> => {
       if (node.nodeType === Node.TEXT_NODE) {
         const textNode = node as Text;
 
@@ -54,7 +67,15 @@ export const useTextNodes = () => {
           textNode.nodeValue!.includes('<#') ||
           textNode.nodeValue!.includes('</#')
         ) {
-          const segments = parseTextWithFreemarker(textNode.nodeValue!);
+          // Use enhanced AST-based text parsing when available
+          let segments;
+          try {
+            segments = await parseTextWithFreemarkerEnhanced(textNode.nodeValue!);
+            console.log('🔧 DEBUG: Using AST-based text parsing for:', textNode.nodeValue!.substring(0, 50));
+          } catch (error) {
+            console.warn('🔧 DEBUG: AST text parsing failed, using regex fallback:', error);
+            segments = parseTextWithFreemarker(textNode.nodeValue!);
+          }
 
           // If only one segment and it's a FreeMarker variable, replace directly
           if (segments.length === 1 && segments[0].isFreemarker) {
@@ -152,7 +173,7 @@ export const useTextNodes = () => {
       }
     };
 
-    traverseAndWrap(doc.body);
+    await traverseAndWrap(doc.body);
     
     // 🔧 FIX: Post-process HTML to decode FreeMarker syntax that gets corrupted during DOM serialization
     let finalHtml = doc.documentElement.outerHTML;
@@ -165,9 +186,9 @@ export const useTextNodes = () => {
     finalHtml = finalHtml.replace(/<!--#([^-]+)-->/g, '</#$1>');
     
     // Step 3: Restore FreeMarker tags after DOM processing
-    if (hasProblematicTags) {
+    if (analysis.hasProblematicBlocks || hasProblematicFreemarkerTags(htmlString)) {
       finalHtml = restoreFreemarkerTags(finalHtml);
-      console.log('🔧 DEBUG: HTML after FreeMarker tag restoration:', finalHtml);
+      console.log('🔧 DEBUG: HTML after FreeMarker tag restoration');
     }
     
     console.log('🔧 DEBUG: Final processed HTML with FreeMarker tags preserved');

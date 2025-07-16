@@ -97,23 +97,176 @@ const freemarkerTagStorage = new Map<string, string>();
 let tagCounter = 0;
 
 /**
- * Extract individual FreeMarker tags that can cause DOM displacement
- * This handles overlapping, incomplete, and complex FreeMarker structures
+ * Detect conditionals with orphaned table elements after table closure
+ * This targets the specific pattern: </table> followed by <#elseif> containing <tr><td>
+ */
+export const detectOrphanedTableElementConditionals = (html: string): Array<{block: string, index: number, length: number}> => {
+  const problematicBlocks = [];
+  
+  // Find all conditional blocks first
+  const conditionalBlockRegex = /<#if[\s\S]*?<\/#if>/gi;
+  let match;
+  
+  while ((match = conditionalBlockRegex.exec(html)) !== null) {
+    const conditionalBlock = match[0];
+    const conditionalIndex = match.index;
+    
+    // Check if this conditional has orphaned table elements
+    if (hasOrphanedTableElements(conditionalBlock, html, conditionalIndex)) {
+      console.log('Found conditional with orphaned table elements:', {
+        index: conditionalIndex,
+        preview: conditionalBlock.substring(0, 100) + '...'
+      });
+      
+      problematicBlocks.push({
+        block: conditionalBlock,
+        index: conditionalIndex,
+        length: conditionalBlock.length
+      });
+    }
+  }
+  
+  conditionalBlockRegex.lastIndex = 0;
+  return problematicBlocks;
+};
+
+/**
+ * Check if a conditional block has orphaned table elements in elseif/else branches
+ */
+const hasOrphanedTableElements = (block: string, fullHtml: string, blockIndex: number): boolean => {
+  // Split into branches
+  const branches = [];
+  const parts = block.split(/(<#(?:else|elseif[^>]*)>)/);
+  
+  let currentBranch = '';
+  let branchType = 'if';
+  
+  for (const part of parts) {
+    if (part.match(/^<#(?:else|elseif[^>]*)>$/)) {
+      if (currentBranch.trim()) {
+        branches.push({ type: branchType, content: currentBranch.trim() });
+      }
+      branchType = part.includes('elseif') ? 'elseif' : 'else';
+      currentBranch = '';
+    } else {
+      currentBranch += part;
+    }
+  }
+  
+  if (currentBranch.trim()) {
+    branches.push({ type: branchType, content: currentBranch.trim() });
+  }
+  
+  // Check if there's a table closure before this conditional
+  const htmlBeforeConditional = fullHtml.substring(0, blockIndex);
+  // Look for </table> anywhere in the HTML before this conditional
+  const hasTableClosureBefore = /<\/table>/i.test(htmlBeforeConditional);
+  
+  // Also check if this conditional immediately follows a table closure (more specific check)
+  const immediatelyAfterTableClosure = /<\/table>[\s\n]*$/.test(htmlBeforeConditional.trim());
+  
+  console.log('Analyzing conditional for orphaned table elements:', {
+    hasTableClosureBefore,
+    immediatelyAfterTableClosure,
+    branchCount: branches.length,
+    branches: branches.map(b => ({ type: b.type, hasTableElements: /<(?:tr|td|th)/i.test(b.content) })),
+    htmlBeforePreview: htmlBeforeConditional.substring(Math.max(0, htmlBeforeConditional.length - 50))
+  });
+  
+  // Check all branches for problematic table structure patterns
+  for (const branch of branches) {
+    const hasTableElements = /<(?:tr|td|th|tbody|thead|tfoot)/i.test(branch.content);
+    const hasTableOpening = /<table[^>]*>/i.test(branch.content);
+    const hasTableClosing = /<\/table>/i.test(branch.content);
+    
+    // Pattern 1: elseif/else branches with orphaned table elements after table closure
+    if ((branch.type === 'elseif' || branch.type === 'else') && hasTableElements && !hasTableOpening && (hasTableClosureBefore || immediatelyAfterTableClosure)) {
+      console.log(`Found orphaned table elements in ${branch.type} branch after table closure:`, {
+        branchContent: branch.content.substring(0, 100) + '...',
+        hasTableElements,
+        hasTableOpening,
+        hasTableClosureBefore
+      });
+      return true;
+    }
+    
+    // Pattern 2: Conditional spans table boundary - table closing tag inside a branch
+    if (branch.type === 'if' && hasTableClosing) {
+      // Check if any other branch has orphaned table elements
+      for (const otherBranch of branches) {
+        if (otherBranch.type !== 'if') {
+          const otherHasTableElements = /<(?:tr|td|th|tbody|thead|tfoot)/i.test(otherBranch.content);
+          const otherHasTableOpening = /<table[^>]*>/i.test(otherBranch.content);
+          
+          if (otherHasTableElements && !otherHasTableOpening) {
+            console.log(`Found conditional spanning table boundary - table closes in '${branch.type}' branch, orphaned elements in '${otherBranch.type}' branch:`, {
+              closingBranchContent: branch.content.substring(0, 100) + '...',
+              orphanedBranchContent: otherBranch.content.substring(0, 100) + '...',
+              hasTableClosing,
+              otherHasTableElements,
+              otherHasTableOpening
+            });
+            return true;
+          }
+        }
+      }
+    }
+  }
+  
+  return false;
+};
+
+/**
+ * Solution 6: Targeted Orphaned Table Element Fix
+ * Only extracts conditionals with orphaned table elements, keeps all others as individual tags
  */
 export const extractFreemarkerTags = (html: string): string => {
   // Clear previous storage
   freemarkerTagStorage.clear();
   tagCounter = 0;
-
-  // Regex to match individual FreeMarker tags (not complete blocks)
-  const freemarkerTagRegex = /<#(?:if\s[^>]*|else|elseif\s[^>]*|\/#?\w+(?:\s[^>]*)?|\w+(?:\s[^>]*)?)>/gi;
+  
+  console.log('=== Solution 6: Targeted Orphaned Table Element Fix ===');
   
   let processedHtml = html;
+  
+  // Step 1: Detect conditionals with orphaned table elements (the specific problematic pattern)
+  const orphanedTableConditionals = detectOrphanedTableElementConditionals(html);
+  
+  if (orphanedTableConditionals.length > 0) {
+    console.log(`Found ${orphanedTableConditionals.length} conditionals with orphaned table elements`);
+    
+    // Extract these problematic conditionals as complete blocks
+    const sortedBlocks = [...orphanedTableConditionals].sort((a, b) => b.index - a.index);
+    
+    sortedBlocks.forEach(blockInfo => {
+      const blockId = `FREEMARKER_ORPHANED_TABLE_BLOCK_${tagCounter++}`;
+      
+      // Store the complete block
+      freemarkerTagStorage.set(blockId, blockInfo.block);
+      
+      // Replace with placeholder
+      const placeholder = `<!-- ${blockId} -->`;
+      processedHtml = processedHtml.substring(0, blockInfo.index) + 
+                     placeholder + 
+                     processedHtml.substring(blockInfo.index + blockInfo.length);
+      
+      console.log(`Extracted orphaned table conditional:`, {
+        blockId,
+        position: blockInfo.index
+      });
+    });
+  } else {
+    console.log('No conditionals with orphaned table elements found');
+  }
+  
+  // Step 2: Extract individual tags from ALL remaining FreeMarker content
+  // This includes all the well-structured conditionals that should remain editable
+  const freemarkerTagRegex = /<#(?:if\s[^>]*|else|elseif\s[^>]*|\/#?\w+(?:\s[^>]*)?|\w+(?:\s[^>]*)?)>/gi;
   const matches = [];
   let match;
   
-  // Collect all FreeMarker tags first
-  while ((match = freemarkerTagRegex.exec(html)) !== null) {
+  // Collect all remaining FreeMarker tags
+  while ((match = freemarkerTagRegex.exec(processedHtml)) !== null) {
     matches.push({
       tag: match[0],
       index: match.index,
@@ -121,32 +274,25 @@ export const extractFreemarkerTags = (html: string): string => {
     });
   }
   
-  // Process matches in reverse order to maintain correct indices
+  console.log(`Extracting ${matches.length} individual FreeMarker tags (keeping conditionals editable)...`);
+  
+  // Process individual tags in reverse order
   matches.reverse().forEach(matchInfo => {
     const tagId = `FREEMARKER_TAG_${tagCounter++}`;
     
-    // Store the original tag
+    // Store the individual tag
     freemarkerTagStorage.set(tagId, matchInfo.tag);
     
-    // Create a placeholder comment that won't interfere with DOM parsing
+    // Replace with placeholder
     const placeholder = `<!-- ${tagId} -->`;
-    
-    // Replace the tag with placeholder
     processedHtml = processedHtml.substring(0, matchInfo.index) + 
                    placeholder + 
                    processedHtml.substring(matchInfo.index + matchInfo.length);
-    
-    console.log(`Extracted FreeMarker tag:`, {
-      tagId,
-      originalTag: matchInfo.tag,
-      placeholder,
-      position: matchInfo.index
-    });
   });
   
-  // Reset regex lastIndex for next use
   freemarkerTagRegex.lastIndex = 0;
   
+  console.log('=== Solution 6 Complete ===');
   return processedHtml;
 };
 
@@ -191,6 +337,68 @@ export const hasProblematicFreemarkerTags = (html: string): boolean => {
   // Check for any FreeMarker conditional tags
   const freemarkerTagRegex = /<#(?:if\s[^>]*|else|elseif\s[^>]*|\/#?\w+(?:\s[^>]*)?|\w+(?:\s[^>]*)?)>/gi;
   return freemarkerTagRegex.test(html);
+};
+
+/**
+ * Enhanced FreeMarker extraction with AST-based library support
+ * Automatically chooses between regex-based and AST-based approaches
+ */
+export const extractFreemarkerTagsEnhanced = async (html: string): Promise<string> => {
+  try {
+    // Try AST-based approach first for better accuracy
+    const { extractFreemarkerTagsWithLibrary } = await import('./freemarkerLibraryUtils');
+    const result = await extractFreemarkerTagsWithLibrary(html);
+    console.log('✅ Using AST-based FreeMarker processing');
+    return result;
+  } catch (error) {
+    console.warn('AST-based processing failed, falling back to regex approach:', error instanceof Error ? error.message : String(error));
+    // Fall back to proven regex-based approach
+    return extractFreemarkerTags(html);
+  }
+};
+
+/**
+ * Analyze FreeMarker conditionals with enhanced AST support
+ */
+export const analyzeFreemarkerConditionals = async (html: string) => {
+  try {
+    const { analyzeConditionalBlocksWithLibrary } = await import('./freemarkerLibraryUtils');
+    const astAnalysis = await analyzeConditionalBlocksWithLibrary(html);
+    
+    if (astAnalysis) {
+      console.log('✅ Using AST-based conditional analysis');
+      return {
+        approach: 'ast' as const,
+        blocks: astAnalysis,
+        hasProblematicBlocks: astAnalysis.some(block => block.hasOrphanedElements)
+      };
+    }
+  } catch (error) {
+    console.warn('AST-based analysis failed:', error instanceof Error ? error.message : String(error));
+  }
+  
+  // Fall back to regex-based analysis
+  const orphanedConditionals = detectOrphanedTableElementConditionals(html);
+  return {
+    approach: 'regex' as const,
+    blocks: orphanedConditionals,
+    hasProblematicBlocks: orphanedConditionals.length > 0
+  };
+};
+
+/**
+ * Parse text with FreeMarker using enhanced AST support
+ */
+export const parseTextWithFreemarkerEnhanced = async (text: string) => {
+  try {
+    const { parseTextWithFreemarkerLibrary } = await import('./freemarkerLibraryUtils');
+    const result = await parseTextWithFreemarkerLibrary(text);
+    console.log('✅ Using AST-based text parsing');
+    return result;
+  } catch (error) {
+    console.warn('AST-based text parsing failed, falling back to regex:', error instanceof Error ? error.message : String(error));
+    return parseTextWithFreemarker(text);
+  }
 };
 
 // Legacy functions for backward compatibility
